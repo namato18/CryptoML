@@ -37,7 +37,7 @@ ui <- dashboardPage(
                                                                            "8 Hour" = "8hour",
                                                                            "1 Day" = "1day",
                                                                            "1 Week" = "7day")),
-                selectInput("select","Pick a stock to predict", choices = list("Ethereum" = "ETHUSD",
+                selectInput("select","Pick a crypto to predict", choices = list("Ethereum" = "ETHUSD",
                                                                                "BitCoin" = "BTCUSD")),
                 column(width = 6,
                        box(title = "Inputs", solidHeader = TRUE, status = "primary", width = NULL,
@@ -76,6 +76,26 @@ ui <- dashboardPage(
                 ),
                 column(width = 6,
                 box(width = NULL, title = "Backtest", status = "primary", solidHeader = TRUE,
+                  strong(h4("Variable Info:")),
+                  strong('Actual:'),
+                  paste0("If the next candle actually hit the target percentage increase, this will be a 1, otherwise 0"),
+                  br(),
+                  strong("Actual.Percent.High:"),
+                  paste0("This was the next candles high"),
+                  br(),
+                  strong("Actual.Percent.Low:"),
+                  paste0("This was the next candles low"),
+                  br(),
+                  strong("Actual.Percent.Close:"),
+                  paste0("This was the next candles close"),
+                  br(),
+                  strong("Probability:"),
+                  paste0("This is the probability the model predicted that the next candle would reach the target percentage increase"),
+                  br(),
+                  strong("Prediction:"),
+                  paste0("If the 'Probability' is higher than the selected prediction hit threshold, this will be a 1, otherwise 0"),
+                  br(),
+                  br(),
                   dataTableOutput("table1")
                 )
               )
@@ -153,7 +173,7 @@ ui <- dashboardPage(
 
 # Define server logic
 server <- function(input, output) {
-
+current_environment = environment()
   # Read in functions
   source("DogeCoinML.R")
   
@@ -164,8 +184,8 @@ server <- function(input, output) {
     all.bst.numbers = str_match(string = all.bst.names, pattern = "bst_(.*)\\.")[,2]
     all.bst.path = list.files(path = "bsts", pattern = ".rds", full.names = TRUE)
     all.bst = lapply(all.bst.path, readRDS)
-    assign('all.bst.numbers',all.bst.numbers,.GlobalEnv)
-    assign('all.bst',all.bst,.GlobalEnv)
+    assign('all.bst.numbers',all.bst.numbers,current_environment)
+    assign('all.bst',all.bst,current_environment)
     
     predict.best(0.3, all.bst, all.bst.names)
     
@@ -181,7 +201,7 @@ server <- function(input, output) {
   observeEvent(input$action1, {
     showModal(modalDialog("Generating Your Model...", footer = NULL))
     on.exit(removeModal())
-    createModel(input$slider1, input$slider2, input$select, input$timeframe, input$tp, input$sl)
+    createModel(input$slider1, input$slider2, input$select, input$timeframe, input$tp, input$sl, current_environment)
     output$OverallAccuracy = renderInfoBox({
       infoBox("Overall Accuracy",paste0(round(overall.accuracy, digits = 2), "%"), icon = icon('check'))
       })
@@ -213,7 +233,7 @@ server <- function(input, output) {
   observeEvent(input$action4, {
     showModal(modalDialog("Generating predictions...", footer = NULL))
     on.exit(removeModal())
-    predict.tomorrow.multiple(input$checkGroup, input$timeframePredict, input$slider3)
+    predict.tomorrow.multiple(input$checkGroup, input$timeframePredict, input$slider3, current_environment)
     output$multipleOutput = renderDataTable(predictions.df.comb,
                                             rownames = FALSE,
                                             extensions = "Buttons",

@@ -8,7 +8,7 @@ library(usethis)
 
 readRenviron(".Renviron")
 
-createModel <- function(TargetIncreasePercent = 4.5, SuccessThreshold = 0.3, Symbol, Timeframe, TP, SL){
+createModel <- function(TargetIncreasePercent = 4.5, SuccessThreshold = 0.3, Symbol, Timeframe, TP, SL, current_environment){
 # 
 # # Riingo get data
 # df = riingo_crypto_prices(Symbol, end_date = Sys.Date(), resample_frequency = Timeframe)
@@ -121,7 +121,7 @@ outcome.train = outcome[sample.split]
 outcome.test = outcome[!sample.split]
 
 
-assign('train',train,.GlobalEnv)
+assign('train',train,current_environment)
 
 # Created boosted model
 # bst = xgboost(data = train,
@@ -178,12 +178,12 @@ no.buy = compare[compare$Prediction == 0, ]
 no.buy.correct.perc = length(which(no.buy$Prediction == no.buy$Actual)) / nrow(no.buy) * 100
 
 
-assign('yes.buy.correct.perc',yes.buy.correct.perc,.GlobalEnv)
-assign("no.buy.correct.perc",no.buy.correct.perc,.GlobalEnv)
-assign("overall.accuracy",accuracy,.GlobalEnv)
-assign("compare",compare,.GlobalEnv)
-assign("sum.percentage",accuracy2,.GlobalEnv)
-assign('bst',bst,.GlobalEnv)
+assign('yes.buy.correct.perc',yes.buy.correct.perc,current_environment)
+assign("no.buy.correct.perc",no.buy.correct.perc,current_environment)
+assign("overall.accuracy",accuracy,current_environment)
+assign("compare",compare,current_environment)
+assign("sum.percentage",accuracy2,current_environment)
+assign('bst',bst,current_environment)
 }
 
 # Predict Best
@@ -223,8 +223,8 @@ predict.best <- function(SuccessThreshold = 0.3, all.bst, all.bst.names){
     
     all.predictions = c(all.predictions, predict.now)
     
-    assign("all.predictions",all.predictions,.GlobalEnv)
-    assign(paste0("predict_",names) ,predict.now,.GlobalEnv)
+    assign("all.predictions",all.predictions,current_environment)
+    assign(paste0("predict_",names) ,predict.now,current_environment)
   }
 }
 
@@ -247,7 +247,7 @@ predict.tomorrow <- function(SuccessThreshold, Symbol){
   current$Date = as.numeric(current$Date)
   
   current = as.matrix(current)
-  assign('current',current,.GlobalEnv)
+  assign('current',current,current_environment)
   
   predict.now = predict(bst, current)
   if(predict.now >= SuccessThreshold){
@@ -256,10 +256,10 @@ predict.tomorrow <- function(SuccessThreshold, Symbol){
     print("not good")
   }
   
-  assign(paste0("predict.now") ,predict.now,.GlobalEnv)
+  assign(paste0("predict.now") ,predict.now,current_environment)
 }
 
-predict.tomorrow.multiple <- function(Symbols, Timeframe, SuccessThreshold){
+predict.tomorrow.multiple <- function(Symbols, Timeframe, SuccessThreshold, current_environment){
   # Symbols = Symbols
   # Symbols = c('ethusd','btcusd')
   # Timeframe = '7day'
@@ -338,7 +338,7 @@ predict.tomorrow.multiple <- function(Symbols, Timeframe, SuccessThreshold){
                                 "Confidence Score" = NA)
     
     predictions = c()
-    for(j in 1:20){
+    for(j in 1:10){
       bst = readRDS(paste0('bsts/bst_',toupper(Symbols[i]),Timeframe,j,'.rds'))
       
       bst = readRDS(paste0('bsts/bst_',toupper(Symbols[i]),Timeframe,j,'.rds'))
@@ -354,7 +354,7 @@ predict.tomorrow.multiple <- function(Symbols, Timeframe, SuccessThreshold){
 
   }
   predictions.df.comb$Confidence.Score = round(predictions.df.comb$Confidence.Score, digits = 4)
-  assign("predictions.df.comb",predictions.df.comb,.GlobalEnv)
+  assign("predictions.df.comb",predictions.df.comb,current_environment)
   
   
   
