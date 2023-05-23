@@ -163,7 +163,7 @@ if(TP == 0 & SL == 0){
   winning.sum.above = sum(as.numeric(as.character(winning.trades.above$Actual.Percent.High)))
   winning.sum = winning.sum.above + winning.sum.below
   missed.trades = examine[examine$Actual == 0,]
-  # missed.trades$Actual.Percent.Close[missed.trades$Actual.Percent.Close < SL] = SL
+  missed.trades$Actual.Percent.Close[missed.trades$Actual.Percent.Close < SL] = SL
   missed.sum = sum(as.numeric(as.character(missed.trades$Actual.Percent.Close)))
   accuracy2 = winning.sum + missed.sum
   # accuracy2 = sum(as.numeric(as.character(examine$Actual.Percent.Close)))

@@ -44,7 +44,7 @@ ui <- dashboardPage(
                          strong("Note if you're using a mobile device you can just tap the number on the slider instead of actually sliding it."),
                          br(),
                          br(),
-                         sliderInput("slider1","Select Percentage Increase", min = 1, max = 50, step = 1, value = 4),
+                         sliderInput("slider1","Select Percentage Increase", min = 1, max = 25, step = 1, value = 4),
                          sliderInput("slider2", "Select Prediction 'hit' Threshold", min = 0.1, max = 1, step = 0.05, value = 0.3),
                          strong("Note:"),
                          paste0("Metrics by default are calculated based on the candles closing value. ",
