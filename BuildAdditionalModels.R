@@ -8,13 +8,13 @@ library(quantmod)
 #####################################################################################
 #####################################################################################
 #####################################################################################
-x = list.files(path = 'C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/TVData',full.names = TRUE)
-file.names = list.files('C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/TVData')
+x = list.files(path = 'TVData',full.names = TRUE)
+file.names = list.files('TVData')
 file.names = str_replace(string = file.names, pattern = '\\.csv', replacement = "")
 ls.files = lapply(x, read.csv)
 
 for(i in 1:length(ls.files)){
-  for(j in 1:50){
+  for(j in 1:25){
     df = ls.files[[i]]
     # Testing quantmod
     # df = data.frame(getSymbols("DOGE-USD",
@@ -25,6 +25,8 @@ for(i in 1:length(ls.files)){
     # 
     # df = na.omit(df)
     
+    # Remove uncecessary columns
+    df = df[,1:5]
     
     # Modify data to be more useable
     df$Percent.Change = NA
@@ -32,6 +34,24 @@ for(i in 1:length(ls.files)){
     colnames(df) = c("Date","Open","High","Low","Close","Percent.Change")
     df$Percent.Change = round((((df$High / df$Open) * 100) - 100), digits = 1)
     
+    # Adding Moving Averages
+    df$MA10 = NA
+    df$MA20 = NA
+    
+    for(k in 21:nrow(df)){
+      df$MA10[k] = mean(df$Close[k-10:k])
+      df$MA20[k] = mean(df$Close[k-20:k])
+    }
+    df$MA10 = round(df$MA10, digits = 2)
+    df$MA20 = round(df$MA20, digits = 2)
+    
+    # Remove unusable rows
+    df = df[-(1:20),]
+    
+    # Add column for if MA10 is above or below MA20
+    df$MAAB = 0
+    
+    df$MAAB[df$MA10 > df$MA20] = 1
     
     
     # Add column for binary previouos day change
@@ -61,7 +81,7 @@ for(i in 1:length(ls.files)){
     df$Date = str_replace(df$Date, pattern = "-.*", replacement = "")
     df$Date = as.numeric(df$Date)
     
-    saveRDS(df, file = paste0("C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/bsts/df_",file.names[i],".rds"))
+    saveRDS(df, file = paste0("bsts/df_",file.names[i],".rds"))
     
     # outcomes
     
@@ -81,7 +101,7 @@ for(i in 1:length(ls.files)){
     outcome = outcome[-(length(outcome))]
     df = df[-(nrow(df)),]
     
-    saveRDS(outcome, file = paste0("C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/bsts/outcome_",file.names[i],j,".rds"))
+    saveRDS(outcome, file = paste0("bsts/outcome_",file.names[i],j,".rds"))
     
     
     # Remove Previous column for testing
@@ -92,7 +112,7 @@ for(i in 1:length(ls.files)){
     set.seed(123)
     sample.split = sample(c(TRUE,FALSE), nrow(df), replace = TRUE, prob=c(0.8,0.2))
     
-    saveRDS(sample.split, file = paste0("C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/bsts/sample.split_",file.names[i],j,".rds"))
+    saveRDS(sample.split, file = paste0("bsts/sample.split_",file.names[i],j,".rds"))
     
     
     # Remvoe last sample int since I said so
@@ -104,8 +124,8 @@ for(i in 1:length(ls.files)){
     train = as.matrix(train)
     test = as.matrix(test)
     
-    saveRDS(train, file = paste0("C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/bsts/train_",file.names[i],j,".rds"))
-    saveRDS(test, file = paste0("C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/bsts/test_",file.names[i],j,".rds"))
+    saveRDS(train, file = paste0("bsts/train_",file.names[i],j,".rds"))
+    saveRDS(test, file = paste0("bsts/test_",file.names[i],j,".rds"))
     
     outcome.train = outcome[sample.split]
     outcome.test = outcome[!sample.split]
@@ -120,7 +140,7 @@ for(i in 1:length(ls.files)){
                   max.depth = 10,
                   nrounds = 50)
     
-    saveRDS(bst, file = paste0("C:/Users/xbox/Desktop/Rstuff/DogeCoinMLPaid/bsts/bst_",file.names[i],j,".rds"))
+    saveRDS(bst, file = paste0("bsts/bst_",file.names[i],j,".rds"))
     print(file.names[i])
   }
 }

@@ -270,11 +270,11 @@ predict.tomorrow.multiple <- function(Symbols, Timeframe, SuccessThreshold){
   
   for(i in 1:length(Symbols)){
 
-    if(Timeframe == '4hour'){
-      df = riingo_crypto_latest(Symbols[i], resample_frequency = Timeframe)
-      if(nrow(df) == 1){
-        df = riingo_crypto_prices(Symbols[i], end_date = Sys.Date(), resample_frequency = Timeframe)
-      }
+    if(Timeframe == '4hour' | Timeframe == '8hour'){
+      df1 = riingo_crypto_prices(Symbols[i], end_date = Sys.Date(), resample_frequency = Timeframe)
+      df1 = df1[-nrow(df1),]
+      df2 = riingo_crypto_latest(Symbols[i], resample_frequency = Timeframe)
+      df = rbind(df1,df2)
     }else{
       df = riingo_crypto_prices(Symbols[i], end_date = Sys.Date(), resample_frequency = Timeframe)
     }
@@ -284,6 +284,25 @@ predict.tomorrow.multiple <- function(Symbols, Timeframe, SuccessThreshold){
     df = df[-1,-c(1:3,9:11)]
     colnames(df) = c("Date","Open","High","Low","Close","Percent.Change")
     df$Percent.Change = round((((df$Close / df$Open) * 100) - 100), digits = 1)
+    
+    # Adding Moving Averages
+    df$MA10 = NA
+    df$MA20 = NA
+    
+    for(k in 21:nrow(df)){
+      df$MA10[k] = mean(df$Close[k-10:k])
+      df$MA20[k] = mean(df$Close[k-20:k])
+    }
+    df$MA10 = round(df$MA10, digits = 2)
+    df$MA20 = round(df$MA20, digits = 2)
+    
+    # Remove unusable rows
+    df = df[-(1:20),]
+    
+    # Add column for if MA10 is above or below MA20
+    df$MAAB = 0
+    
+    df$MAAB[df$MA10 > df$MA20] = 1
     
     # Add column for binary previouos day change
     df$Previous = NA
@@ -320,6 +339,8 @@ predict.tomorrow.multiple <- function(Symbols, Timeframe, SuccessThreshold){
     
     predictions = c()
     for(j in 1:20){
+      bst = readRDS(paste0('bsts/bst_',toupper(Symbols[i]),Timeframe,j,'.rds'))
+      
       bst = readRDS(paste0('bsts/bst_',toupper(Symbols[i]),Timeframe,j,'.rds'))
       df = as.matrix(df)
       predict.next = predict(bst, df)
