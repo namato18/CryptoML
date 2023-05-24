@@ -25,6 +25,8 @@ ui <- dashboardPage(
     tabItems(
       tabItem(tabName = "create",
               fluidRow(
+                img(src='logo2.png', width = 200, height = 200, align = 'right' ),
+                
                 strong(h2("Creating a Model:")),
                 paste0("On this tab you can use the sliders to modify how the predictive model is created. First you need to select a timeframe ",
                        "and coin that you're interested in predicting. ","The first slider is used ",
@@ -125,6 +127,7 @@ ui <- dashboardPage(
       #         ),
       tabItem(tabName = "predictMultiple",
               fluidRow(
+                img(src='logo2.png', width = 200, height = 200, align = 'right' ),
                 strong(h3("About:")),
                 paste0("On this tab you can generate predictions for multiple coins! Simply use the check boxes to select which coins you'd like to predict.",
                        " If you'd like to export these results, simply press the 'csv' button on top of the table below."),
