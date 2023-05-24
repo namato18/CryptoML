@@ -50,11 +50,11 @@ ui <- dashboardPage(
                          sliderInput("slider2", "Select Prediction 'hit' Threshold", min = 0.1, max = 1, step = 0.05, value = 0.3),
                          strong("Note:"),
                          paste0("Metrics by default are calculated based on the candles closing value. ",
-                                "You can use the TP (take profit) and SL (stop loss) input fields to specify your TP/SL. ",
-                                "Setting a TP/SL can limit your gains, but can also limit your losses! ",
-                                "Leaving both the TP/SL values at 0 will set the metrics to be calculated based on candles closing value."),
+                                "You can use the TP (take profit) input field to specify your TP. ",
+                                "Setting a TP can limit your gains, but can also limit your losses! ",
+                                "Leaving the TP value at 0 will set the metrics to be calculated based on candles closing value."),
                          numericInput('tp',"Set TP (must be positive)", value = 0, min = 0),
-                         numericInput("sl","Set SL (must be negative)", value = 0, max = 0),
+                         # numericInput("sl","Set SL (must be negative)", value = 0, max = 0),
                          actionButton('action1', label = "Generate"),
                          br(),
                          br(),
@@ -204,7 +204,7 @@ current_environment = environment()
   observeEvent(input$action1, {
     showModal(modalDialog("Generating Your Model...", footer = NULL))
     on.exit(removeModal())
-    createModel(input$slider1, input$slider2, input$select, input$timeframe, input$tp, input$sl, current_environment)
+    createModel(input$slider1, input$slider2, input$select, input$timeframe, input$tp, current_environment)
     output$OverallAccuracy = renderInfoBox({
       infoBox("Overall Accuracy",paste0(round(overall.accuracy, digits = 2), "%"), icon = icon('check'))
       })

@@ -8,7 +8,7 @@ library(usethis)
 
 readRenviron(".Renviron")
 
-createModel <- function(TargetIncreasePercent = 4.5, SuccessThreshold = 0.3, Symbol, Timeframe, TP, SL, current_environment){
+createModel <- function(TargetIncreasePercent = 4.5, SuccessThreshold = 0.3, Symbol, Timeframe, TP=0, current_environment){
 # 
 # # Riingo get data
 # df = riingo_crypto_prices(Symbol, end_date = Sys.Date(), resample_frequency = Timeframe)
@@ -148,7 +148,7 @@ accuracy = length(which(compare$Actual == compare$Prediction)) / nrow(compare) *
 print(accuracy)
 
 
-if(TP == 0 & SL == 0){
+if(TP == 0){
   examine = compare[compare$Prediction == 1, ]
   accuracy2 = sum(as.numeric(as.character(examine$Actual.Percent.Close)))
   print(accuracy2)
@@ -162,10 +162,10 @@ if(TP == 0 & SL == 0){
   winning.sum.below = sum(as.numeric(as.character(winning.trades.below$Actual.Percent.Close)))
   winning.sum.above = sum(as.numeric(as.character(winning.trades.above$Actual.Percent.High)))
   winning.sum = winning.sum.above + winning.sum.below
-  missed.trades = examine[examine$Actual == 0,]
-  missed.trades$Actual.Percent.Close[missed.trades$Actual.Percent.Close < SL] = SL
-  missed.sum = sum(as.numeric(as.character(missed.trades$Actual.Percent.Close)))
-  accuracy2 = winning.sum + missed.sum
+  # missed.trades = examine[examine$Actual == 0,]
+  # missed.trades$Actual.Percent.Close[missed.trades$Actual.Percent.Close < SL] = SL
+  # missed.sum = sum(as.numeric(as.character(missed.trades$Actual.Percent.Close)))
+  accuracy2 = winning.sum
   # accuracy2 = sum(as.numeric(as.character(examine$Actual.Percent.Close)))
   print(accuracy2)
 }
