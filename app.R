@@ -11,9 +11,10 @@ ui <- dashboardPage(
   dashboardHeader(title = "Crypto ML"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Creating a Model", tabName = "create"),
+      menuItem(text = "Creating a Model", tabName = "create"),
       #menuItem("Predict Tomorrow", tabName = "predict"),
-      menuItem("Predict Next Candle (Multiple)", tabName = 'predictMultiple')
+      menuItem("Predict Next Candle (Multiple)", tabName = 'predictMultiple'),
+      menuItem("Predict Next 7 Days/Weeks", tabName = 'predictNextWeek')
       # menuItem("Most Likely Outcome", tabName = "likely")
       
     )
@@ -38,16 +39,22 @@ ui <- dashboardPage(
                 selectInput("timeframe","Pick a Timeframe", choices = list("4 Hour" = "4hour",
                                                                            "8 Hour" = "8hour",
                                                                            "1 Day" = "1day",
-                                                                           "1 Week" = "7day")),
+                                                                           "1 Week" = "7day",
+                                                                           "1 Month" = '1month')),
                 selectInput("select","Pick a crypto to predict", choices = list("Ethereum" = "ETHUSD",
-                                                                               "BitCoin" = "BTCUSD")),
+                                                                               "BitCoin" = "BTCUSD"
+                                                                               # "Ethereum Futures" = "ETHUSDT",
+                                                                               # "BitCoin Futures" = 'BTCUSDT',
+                                                                               # "Solana Futures" = 'SOLUSDT',
+                                                                               # "Dogecoin Futures" = 'DOGEUSDT'
+                                                                               )),
                 column(width = 6,
                        box(title = "Inputs", solidHeader = TRUE, status = "primary", width = NULL,
                          strong("Note if you're using a mobile device you can just tap the number on the slider instead of actually sliding it."),
                          br(),
                          br(),
-                         sliderInput("slider1","Select Percentage Increase", min = 1, max = 25, step = 1, value = 4),
-                         sliderInput("slider2", "Select Prediction 'hit' Threshold", min = 0.1, max = 1, step = 0.05, value = 0.3),
+                         sliderInput("slider1","Select Percentage Increase", min = 1, max = 5, step = 1, value = 1),
+                         sliderInput("slider2", "Select Prediction 'hit' Threshold", min = 0.1, max = 1, step = 0.02, value = 0.9),
                          strong("Note:"),
                          paste0("Metrics by default are calculated based on the candles closing value. ",
                                 "You can use the TP (take profit) input field to specify your TP. ",
@@ -60,10 +67,10 @@ ui <- dashboardPage(
                          br(),
                        ),
                        box(title = "Metrics", width = NULL, status = "primary", solidHeader = TRUE,
-                         infoBoxOutput("OverallAccuracy", width = 6),
-                         infoBoxOutput("SumPercentage", width = 6),
+                         # infoBoxOutput("OverallAccuracy", width = 6),
                          infoBoxOutput("Buy", width = 6),
-                         infoBoxOutput("DontBuy", width = 6),
+                         infoBoxOutput("SumPercentage", width = 6),
+                         # infoBoxOutput("DontBuy", width = 6),
                          infoBoxOutput("Predictions", width = 6),
                          infoBoxOutput("Hits", width = 6)
                          
@@ -136,12 +143,14 @@ ui <- dashboardPage(
                 box(title = "Predict Multiple", status = "primary", solidHeader = TRUE,
                     checkboxGroupInput('checkGroup', label = 'Select Coin(s)',
                                        choices = list("Bitcoin" = 'btcusd', "Ethereum" = 'ethusd'),
+                                                      # "Ethereum Futures" = 'ethusdt',
+                                                      # "Bitcoin Futures" = 'btcusdt', "Solana Futures" = 'solusdt', "Dogecoin Futures" = 'dogeusdt'),
                                        selected = 'btcusd'),
                     selectInput("timeframePredict","Pick a Timeframe", choices = list("4 Hour" = "4hour",
                                                                                       "8 Hour" = "8hour",
                                                                                       "1 Day" = "1day",
                                                                                       "1 Week" = "7day")),
-                    sliderInput("slider3", "Select Prediction 'hit' Threshold", min = 0.1, max = 1, step = 0.05, value = 0.3),
+                    sliderInput("slider3", "Select Prediction 'hit' Threshold", min = 0.1, max = 1, step = 0.05, value = 0.9),
                     actionButton("action4","Predict"),
                     br(),
                     br()
@@ -149,6 +158,32 @@ ui <- dashboardPage(
 
                 ),
                 dataTableOutput("multipleOutput")
+              )
+      ),
+      
+      tabItem(tabName = "predictNextWeek",
+              fluidRow(
+                img(src='logo2.png', width = 200, height = 200, align = 'right' ),
+                strong(h3("About:")),
+                paste0("On this tab you may pick a crypto to forecast for the next 7 days/weeks! The machine learning model utilizes the past 14 candles of data ",
+                       "to predict the next 7 candles price movements!"),
+                br(),
+                br(),
+                strong('Note: Previous data is displayed in BLUE while forecasted data is displayed in RED'),
+                br(),
+                br(),
+                box(title = "Predict Next 7 Days/Weeks", status = "primary", solidHeader = TRUE,
+                    selectInput('selectTimeFrame', 'Select a time frame', choices = list('7 Days' = 'daily',
+                                                                                         '7 Weeks' = 'weekly')),
+                    selectInput('selectNextWeek', "Select a Coin", choices = list("Ethereum" = 'ETH-USD',
+                                                                                  "Bitcoin" = 'BTC-USD')),
+                    actionButton("action5", "Predict"),
+                    br(),
+                    br()
+
+
+                ),
+                plotOutput("nextWeekOutput")
               )
       )
       # tabItem(tabName = "likely",
@@ -176,7 +211,7 @@ ui <- dashboardPage(
 
 # Define server logic
 server <- function(input, output) {
-current_environment = environment()
+# .GlobalEnv = environment()
   # Read in functions
   source("DogeCoinML.R")
   
@@ -187,8 +222,8 @@ current_environment = environment()
     all.bst.numbers = str_match(string = all.bst.names, pattern = "bst_(.*)\\.")[,2]
     all.bst.path = list.files(path = "bsts", pattern = ".rds", full.names = TRUE)
     all.bst = lapply(all.bst.path, readRDS)
-    assign('all.bst.numbers',all.bst.numbers,current_environment)
-    assign('all.bst',all.bst,current_environment)
+    assign('all.bst.numbers',all.bst.numbers,.GlobalEnv)
+    assign('all.bst',all.bst,.GlobalEnv)
     
     predict.best(0.3, all.bst, all.bst.names)
     
@@ -204,17 +239,17 @@ current_environment = environment()
   observeEvent(input$action1, {
     showModal(modalDialog("Generating Your Model...", footer = NULL))
     on.exit(removeModal())
-    createModel(input$slider1, input$slider2, input$select, input$timeframe, input$tp, current_environment)
-    output$OverallAccuracy = renderInfoBox({
-      infoBox("Overall Accuracy",paste0(round(overall.accuracy, digits = 2), "%"), icon = icon('check'))
-      })
+    createModel(input$slider1, input$slider2, input$select, input$timeframe, input$tp)
+    # output$OverallAccuracy = renderInfoBox({
+    #   infoBox("Overall Accuracy",paste0(round(overall.accuracy, digits = 2), "%"), icon = icon('check'))
+    #   })
+    output$Buy = renderInfoBox({infoBox("Accuracy", paste0(round(yes.buy.correct.perc, digits = 2), "%"), icon = icon("thumbs-up"))
+    })
     output$SumPercentage = renderInfoBox({
       infoBox("Sum Percentage", paste0(round(sum.percentage, digits = 2), "%"),icon = icon("money-bill-trend-up"))
       })
-    output$Buy = renderInfoBox({infoBox("'Buy' Correct", paste0(round(yes.buy.correct.perc, digits = 2), "%"), icon = icon("thumbs-up"))
-      })
-    output$DontBuy = renderInfoBox({infoBox("'Don't Buy' Correct", paste0(round(no.buy.correct.perc, digits = 2),"%"),icon = icon("thumbs-down"))
-      })
+    # output$DontBuy = renderInfoBox({infoBox("'Don't Buy' Correct", paste0(round(no.buy.correct.perc, digits = 2),"%"),icon = icon("thumbs-down"))
+    #   })
     output$Predictions = renderInfoBox({infoBox("'Number of Predictions", paste0(nrow(compare)))
     })
     output$Hits = renderInfoBox({infoBox("'Number of 'Hits'", paste0(nrow(compare[compare$Prediction == 1,])))
@@ -236,11 +271,19 @@ current_environment = environment()
   observeEvent(input$action4, {
     showModal(modalDialog("Generating predictions...", footer = NULL))
     on.exit(removeModal())
-    predict.tomorrow.multiple(input$checkGroup, input$timeframePredict, input$slider3, current_environment)
+    predict.tomorrow.multiple(input$checkGroup, input$timeframePredict, input$slider3, .GlobalEnv)
     output$multipleOutput = renderDataTable(predictions.df.comb,
                                             rownames = FALSE,
                                             extensions = "Buttons",
                                             options = list(paging = FALSE, searching = FALSE, dom = 'Bfrtip', buttons = c('csv')))
+  })
+
+  observeEvent(input$action5, {
+    showModal(modalDialog("Generating predictions...", footer = NULL))
+
+    output$nextWeekOutput = renderPlot(predict_week(input$selectNextWeek, input$selectTimeFrame))
+    on.exit(removeModal())
+    
   })
 
 }

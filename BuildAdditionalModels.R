@@ -2,19 +2,28 @@ library(stringr)
 library(lubridate)
 library(xgboost)
 library(quantmod)
+library(tictoc)
+library(CandleStickPattern)
 
 ######### EXTRA CODE TO CREATE BST MODELS
 #####################################################################################
 #####################################################################################
 #####################################################################################
 #####################################################################################
+tictoc::tic()
 x = list.files(path = 'TVData',full.names = TRUE)
 file.names = list.files('TVData')
 file.names = str_replace(string = file.names, pattern = '\\.csv', replacement = "")
 ls.files = lapply(x, read.csv)
 
+# df = read.csv("TVData/BTCUSD4hour.csv")
+# 
+# df = readRDS("bsts/df_ETHUSD4hour.rds")
+# bst = readRDS("bsts/bst_BTCUSD4hour1.rds")
+
+
 for(i in 1:length(ls.files)){
-  for(j in 1:25){
+  for(j in 1:5){
     df = ls.files[[i]]
     # Testing quantmod
     # df = data.frame(getSymbols("DOGE-USD",
@@ -34,27 +43,7 @@ for(i in 1:length(ls.files)){
     colnames(df) = c("Date","Open","High","Low","Close","Percent.Change")
     df$Percent.Change = round((((df$High / df$Open) * 100) - 100), digits = 1)
     
-    # Adding Moving Averages
-    df$MA10 = NA
-    df$MA20 = NA
-    
-    for(k in 21:nrow(df)){
-      df$MA10[k] = mean(df$Close[k-10:k])
-      df$MA20[k] = mean(df$Close[k-20:k])
-    }
-    df$MA10 = round(df$MA10, digits = 2)
-    df$MA20 = round(df$MA20, digits = 2)
-    
-    # Remove unusable rows
-    df = df[-(1:20),]
-    
-    # Add column for if MA10 is above or below MA20
-    df$MAAB = 0
-    
-    df$MAAB[df$MA10 > df$MA20] = 1
-    
-    
-    # Add column for binary previouos day change
+    #Add column for binary previouos day change+
     df$Previous = NA
     for(k in 2:nrow(df)){
       if(df$Percent.Change[k - 1] <= 0){
@@ -68,6 +57,73 @@ for(i in 1:length(ls.files)){
     df = df[-1,]
     
     
+    # Adding Moving Averages
+    df$MA10 = NA
+    df$MA20 = NA
+    
+    for(k in 21:nrow(df)){
+      df$MA10[k] = mean(df$Close[k-10:k])
+      df$MA20[k] = mean(df$Close[k-20:k])
+    }
+    df$MA10 = round(df$MA10, digits = 2)
+    df$MA20 = round(df$MA20, digits = 2)
+
+    # Add column for if MA10 is above or below MA20
+    df$MAAB = 0
+    
+    df$MAAB[df$MA10 > df$MA20] = 1
+    
+    
+    # Convert to actual dates and remove year and change to numeric
+    df$Date = str_replace(string = df$Date, pattern = "T", replacement = " ")
+    df$Date = str_replace(string = df$Date, pattern = "Z", replacement = "")
+    
+    df$Date = as.POSIXct(df$Date, format = "%Y-%m-%d %H:%M:%S")
+    
+    df = as.xts(df)
+
+    
+    
+    # Add candelstick patterns
+    # candle.list = list(CSPDarkCloudCover(df),CSPDoji(df),CSPEngulfing(df),CSPGap(df),CSPHammer(df),CSPHarami(df),
+    #                    CSPInsideDay(df),CSPInvertedHammer(df),CSPKicking(df),CSPLongCandle(df),CSPMarubozu(df),
+    #                    CSPNLongWhiteCandles(df),CSPPiercingPattern(df),CSPStar(df),
+    #                    CSPStomach(df),CSPTasukiGap(df),CSPThreeBlackCrows(df),CSPThreeInside(df),CSPThreeLineStrike(df),
+    #                    CSPThreeMethods(df),CSPThreeOutside(df),CSPThreeWhiteSoldiers(df))
+    candle.list = list(hammer(df), inverted.hammer(df), bearish.engulf(df), bullish.engulf(df), up.trend(df), down.trend(df))
+    
+    # candle.list = list(CSPHammer(df), CSPInvertedHammer(df),CSPEngulfing(df))
+    # trend = candlesticks::TrendDetectionSMA(df)
+
+
+    for(k in 1:length(candle.list)){
+      df = cbind(df, candle.list[[k]])
+    }
+    # df = cbind(df, trend$Trend)
+    
+    # Remove unusable rows
+    df = df[-(1:20),]
+    
+    # Add lagged values
+    for(k in 1:5){
+      high.lag = lag(df$High, k)
+      close.lag = lag(df$Close, k)
+      # lagging = LagOHLC(df, k)
+      # ind = which(names(lagging) == paste0("High.Lag.",k))
+      # ind = c(ind,which(names(lagging) == paste0("Close.Lag.",k)))
+      df = cbind(df, high.lag, close.lag)
+      
+    }
+    
+    df = df[-c(1:5),]
+    
+    df[is.na(df)] = 0
+    
+ 
+    
+    
+
+    
     # Round columns to be more general
     df$Close = round(df$Close, digits = 3)
     df$Open = round(df$Open, digits = 3)
@@ -75,24 +131,28 @@ for(i in 1:length(ls.files)){
     df$Low = round(df$Low, digits = 3)
     
     
-    # Convert to actual dates and remove year and change to numeric
-    df$Date = as.Date(df$Date)
-    df$Date = str_match(string = df$Date, pattern = "-(.*)")[,2]
-    df$Date = str_replace(df$Date, pattern = "-.*", replacement = "")
-    df$Date = as.numeric(df$Date)
-    
-    saveRDS(df, file = paste0("bsts/df_",file.names[i],".rds"))
+
+
     
     # outcomes
     
+    # outcome = nextCandlePosition(df)$HigherClose
+    # outcome = data.frame(outcome)[,1]
+    # outcome = as.numeric(outcome)
+
     outcome = rep(NA, nrow(df))
-    for(z in 1:length(outcome)-1){
-      if(df$Percent.Change[z + 1] >= j){
-        outcome[z] = 1
-      }else{
-        outcome[z] = 0
-      }
-    }
+    outcome[df$Percent.Change >= j] = 1
+    outcome[df$Percent.Change < j] = 0
+    outcome = c(outcome, NA)
+    outcome = outcome[-1]
+    
+    # for(z in 1:length(outcome)-1){
+    #   if(df$Percent.Change[z + 1] >= j){
+    #     outcome[z] = 1
+    #   }else{
+    #     outcome[z] = 0
+    #   }
+    # }
     
     
     
@@ -100,6 +160,10 @@ for(i in 1:length(ls.files)){
     # Remove last row from df since we can't use it
     outcome = outcome[-(length(outcome))]
     df = df[-(nrow(df)),]
+    
+    df = data.frame(df, row.names = NULL)
+    df = df[,c(1:11,12:25)]
+    saveRDS(df, file = paste0("bsts/df_",file.names[i],".rds"))
     
     saveRDS(outcome, file = paste0("bsts/outcome_",file.names[i],j,".rds"))
     
@@ -132,15 +196,16 @@ for(i in 1:length(ls.files)){
     
     
     
-    
     # Created boosted model
     bst = xgboost(data = train,
                   label = outcome.train,
                   objective = "binary:logistic",
-                  max.depth = 10,
-                  nrounds = 50)
+                  max.depth = 50,
+                  nrounds = 500,
+                  eta = 0.3)
     
     saveRDS(bst, file = paste0("bsts/bst_",file.names[i],j,".rds"))
     print(file.names[i])
   }
 }
+tictoc::toc()
