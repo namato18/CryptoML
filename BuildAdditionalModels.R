@@ -15,16 +15,19 @@ x = list.files(path = 'TVData',full.names = TRUE)
 file.names = list.files('TVData')
 file.names = str_replace(string = file.names, pattern = '\\.csv', replacement = "")
 ls.files = lapply(x, read.csv)
-
-# df = read.csv("TVData/BTCUSD4hour.csv")
+# j = 1
+# df = read.csv("TVData/BTCUSDT4hour.csv")
 # 
-# df = readRDS("bsts/df_ETHUSD4hour.rds")
-# bst = readRDS("bsts/bst_BTCUSD4hour1.rds")
+# df = readRDS("bsts/df_BTCUSDT4hour.rds")
+# bst = readRDS("bsts/bst_BTCUSD4hour-1.rds")
 
 
-for(i in 1:length(ls.files)){
-  for(j in 1:5){
+for(i in 1:length(file.names)){
+  for(j in seq(from=1, to=15)){
     df = ls.files[[i]]
+    if(nrow(df) < 30){
+      next()
+    }
     # Testing quantmod
     # df = data.frame(getSymbols("DOGE-USD",
     #                            from = '2017-01-01',
@@ -41,7 +44,11 @@ for(i in 1:length(ls.files)){
     df$Percent.Change = NA
     #df = df[-1,-c(1:3,10:11)]
     colnames(df) = c("Date","Open","High","Low","Close","Percent.Change")
-    df$Percent.Change = round((((df$High / df$Open) * 100) - 100), digits = 1)
+    if(j > 0){
+      df$Percent.Change = round((((df$High / df$Open) * 100) - 100), digits = 1)
+    }else{
+      df$Percent.Change = round((((df$Low / df$Open) * 100) - 100), digits = 1)
+    }
     
     #Add column for binary previouos day change+
     df$Previous = NA
@@ -59,27 +66,27 @@ for(i in 1:length(ls.files)){
     
     # Adding Moving Averages
     df$MA10 = NA
-    df$MA20 = NA
+    # df$MA20 = NA
     
     for(k in 21:nrow(df)){
       df$MA10[k] = mean(df$Close[k-10:k])
-      df$MA20[k] = mean(df$Close[k-20:k])
+      # df$MA20[k] = mean(df$Close[k-20:k])
     }
-    df$MA10 = round(df$MA10, digits = 2)
-    df$MA20 = round(df$MA20, digits = 2)
+    # df$MA10 = round(df$MA10, digits = 2)
+    # df$MA20 = round(df$MA20, digits = 2)
 
     # Add column for if MA10 is above or below MA20
-    df$MAAB = 0
-    
-    df$MAAB[df$MA10 > df$MA20] = 1
+    # df$MAAB = 0
+    # 
+    # df$MAAB[df$MA10 > df$MA20] = 1
     
     
     # Convert to actual dates and remove year and change to numeric
     df$Date = str_replace(string = df$Date, pattern = "T", replacement = " ")
     df$Date = str_replace(string = df$Date, pattern = "Z", replacement = "")
-    
+
     df$Date = as.POSIXct(df$Date, format = "%Y-%m-%d %H:%M:%S")
-    
+
     df = as.xts(df)
 
     
@@ -91,7 +98,7 @@ for(i in 1:length(ls.files)){
     #                    CSPStomach(df),CSPTasukiGap(df),CSPThreeBlackCrows(df),CSPThreeInside(df),CSPThreeLineStrike(df),
     #                    CSPThreeMethods(df),CSPThreeOutside(df),CSPThreeWhiteSoldiers(df))
     candle.list = list(hammer(df), inverted.hammer(df), bearish.engulf(df), bullish.engulf(df), up.trend(df), down.trend(df))
-    
+
     # candle.list = list(CSPHammer(df), CSPInvertedHammer(df),CSPEngulfing(df))
     # trend = candlesticks::TrendDetectionSMA(df)
 
@@ -106,12 +113,13 @@ for(i in 1:length(ls.files)){
     
     # Add lagged values
     for(k in 1:5){
-      high.lag = lag(df$High, k)
-      close.lag = lag(df$Close, k)
+      high.lag = Lag(df$High, k)
+      open.lag = Lag(df$Open, k)
+      percent.change.lag = round((((high.lag/open.lag) - 1) * 100), digits = 2)
       # lagging = LagOHLC(df, k)
       # ind = which(names(lagging) == paste0("High.Lag.",k))
       # ind = c(ind,which(names(lagging) == paste0("Close.Lag.",k)))
-      df = cbind(df, high.lag, close.lag)
+      df = cbind(df, percent.change.lag)
       
     }
     
@@ -125,10 +133,10 @@ for(i in 1:length(ls.files)){
 
     
     # Round columns to be more general
-    df$Close = round(df$Close, digits = 3)
-    df$Open = round(df$Open, digits = 3)
-    df$High = round(df$High, digits = 3)
-    df$Low = round(df$Low, digits = 3)
+    # df$Close = round(df$Close, digits = 3)
+    # df$Open = round(df$Open, digits = 3)
+    # df$High = round(df$High, digits = 3)
+    # df$Low = round(df$Low, digits = 3)
     
     
 
@@ -141,8 +149,14 @@ for(i in 1:length(ls.files)){
     # outcome = as.numeric(outcome)
 
     outcome = rep(NA, nrow(df))
-    outcome[df$Percent.Change >= j] = 1
-    outcome[df$Percent.Change < j] = 0
+    if(j > 0){
+      outcome[df$Percent.Change >= j] = 1
+      outcome[df$Percent.Change < j] = 0
+    }else{
+      outcome[df$Percent.Change <= j] = 1
+      outcome[df$Percent.Change > j] = 0
+    }
+
     outcome = c(outcome, NA)
     outcome = outcome[-1]
     
@@ -162,7 +176,7 @@ for(i in 1:length(ls.files)){
     df = df[-(nrow(df)),]
     
     df = data.frame(df, row.names = NULL)
-    df = df[,c(1:11,12:25)]
+    # df = df[,c(1:11,12:20)]
     saveRDS(df, file = paste0("bsts/df_",file.names[i],".rds"))
     
     saveRDS(outcome, file = paste0("bsts/outcome_",file.names[i],j,".rds"))
@@ -200,9 +214,10 @@ for(i in 1:length(ls.files)){
     bst = xgboost(data = train,
                   label = outcome.train,
                   objective = "binary:logistic",
-                  max.depth = 50,
-                  nrounds = 500,
-                  eta = 0.3)
+                  max.depth = 30,
+                  nrounds = 300,
+                  eta = 0.3,
+                  verbose = FALSE)
     
     saveRDS(bst, file = paste0("bsts/bst_",file.names[i],j,".rds"))
     print(file.names[i])
